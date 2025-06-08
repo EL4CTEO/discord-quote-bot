@@ -1,7 +1,32 @@
 const { Client, GatewayIntentBits, SlashCommandBuilder, REST, Routes, EmbedBuilder } = require('discord.js');
+const express = require('express');
 const fs = require('fs');
 const path = require('path');
 require('dotenv').config();
+
+const app = express();
+const PORT = process.env.PORT || 3000;
+
+app.get('/', (req, res) => {
+    res.json({ 
+        status: 'Bot is running!', 
+        uptime: process.uptime(),
+        timestamp: new Date().toISOString()
+    });
+});
+
+app.get('/health', (req, res) => {
+    res.json({ 
+        status: 'healthy',
+        bot: client.isReady() ? 'connected' : 'disconnected',
+        guilds: client.guilds.cache.size,
+        users: client.users.cache.size
+    });
+});
+
+app.listen(PORT, () => {
+    console.log(`🌐 HTTP server running on port ${PORT}`);
+});
 
 const client = new Client({
     intents: [
@@ -222,6 +247,7 @@ function createQuoteEmbed(quote, title = '💬 Inspirational Quote') {
 }
 
 client.once('ready', async () => {
+    console.log(`🤖 ${client.user.tag} is online!`);
     loadQuotes();
     
     const rest = new REST({ version: '10' }).setToken(process.env.BOT_TOKEN);
@@ -353,7 +379,9 @@ client.on('interactionCreate', async interaction => {
             }
         } catch (error) {
             console.error('Command error:', error);
-            await interaction.reply('❌ An error occurred while processing your request.');
+            if (!interaction.replied) {
+                await interaction.reply('❌ An error occurred while processing your request.');
+            }
         }
     } else if (interaction.isAutocomplete()) {
         if (interaction.commandName === 'quotebyauthor') {
@@ -367,6 +395,10 @@ client.on('interactionCreate', async interaction => {
             );
         }
     }
+});
+
+process.on('unhandledRejection', error => {
+    console.error('Unhandled promise rejection:', error);
 });
 
 client.login(process.env.BOT_TOKEN);
