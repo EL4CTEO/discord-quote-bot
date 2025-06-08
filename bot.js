@@ -254,6 +254,7 @@ function createQuoteEmbed(quote, title = '💬 Inspirational Quote') {
 
 client.once('ready', async () => {
     console.log(`🤖 ${client.user.tag} is online!`);
+    console.log(`🔗 Connected to ${client.guilds.cache.size} guilds with ${client.users.cache.size} users`);
     loadQuotes();
     
     const rest = new REST({ version: '10' }).setToken(process.env.BOT_TOKEN);
@@ -440,6 +441,18 @@ client.on('interactionCreate', async interaction => {
 
 process.on('unhandledRejection', error => {
     console.error('Unhandled promise rejection:', error);
+});
+
+client.on('error', error => {
+    console.error('Client error:', error);
+});
+
+client.on('disconnect', () => {
+    console.log('🔌 Bot disconnected');
+});
+
+client.on('reconnecting', () => {
+    console.log('🔄 Bot reconnecting...');
 });
 
 client.login(process.env.BOT_TOKEN);
