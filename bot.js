@@ -6,21 +6,26 @@ require('dotenv').config();
 
 const app = express();
 const PORT = process.env.PORT || 3000;
+const INSTANCE_ID = `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
 
 app.get('/', (req, res) => {
     res.json({ 
         status: 'Bot is running!', 
+        instance: INSTANCE_ID,
         uptime: process.uptime(),
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
+        environment: process.env.NODE_ENV || 'development'
     });
 });
 
 app.get('/health', (req, res) => {
     res.json({ 
         status: 'healthy',
+        instance: INSTANCE_ID,
         bot: client.isReady() ? 'connected' : 'disconnected',
         guilds: client.guilds.cache.size,
-        users: client.users.cache.size
+        users: client.users.cache.size,
+        commands: commands.length
     });
 });
 
@@ -211,6 +216,7 @@ function getWisdomQuote() {
     }
     return getRandomQuote();
 }
+
 function getQuotesByLength(lengthType) {
     let filteredQuotes;
     
@@ -251,15 +257,46 @@ client.once('ready', async () => {
     loadQuotes();
     
     const rest = new REST({ version: '10' }).setToken(process.env.BOT_TOKEN);
+    
     try {
-        console.log('🧹 Clearing old commands...');
-        await rest.put(Routes.applicationCommands(client.user.id), { body: [] });
+        console.log('🔍 Checking for existing commands...');
         
-        console.log('📝 Registering new quote commands...');
-        await rest.put(Routes.applicationCommands(client.user.id), { body: commands });
-        console.log('✨ Quote Bot is ready with all commands!');
+        const existingCommands = await rest.get(Routes.applicationCommands(client.user.id));
+        console.log(`Found ${existingCommands.length} existing commands`);
+        
+        const currentCommandNames = commands.map(cmd => cmd.name).sort();
+        const existingCommandNames = existingCommands.map(cmd => cmd.name).sort();
+        
+        const isDifferent = JSON.stringify(currentCommandNames) !== JSON.stringify(existingCommandNames);
+        const hasDuplicates = existingCommands.length !== new Set(existingCommandNames).size;
+        
+        if (isDifferent || hasDuplicates) {
+            console.log('🧹 Commands are different or duplicated - clearing and re-registering...');
+            
+            await rest.put(Routes.applicationCommands(client.user.id), { body: [] });
+            console.log('✅ Cleared all existing commands');
+            
+            await new Promise(resolve => setTimeout(resolve, 1000));
+            
+            await rest.put(Routes.applicationCommands(client.user.id), { body: commands });
+            console.log('✨ Registered fresh commands successfully!');
+        } else {
+            console.log('✅ Commands are already up to date - no action needed');
+        }
+        
+        const finalCommands = await rest.get(Routes.applicationCommands(client.user.id));
+        console.log(`🎯 Final command count: ${finalCommands.length}`);
+        console.log(`📝 Commands: ${finalCommands.map(cmd => cmd.name).join(', ')}`);
+        
     } catch (error) {
-        console.error('Error registering commands:', error);
+        console.error('❌ Error managing commands:', error);
+        console.log('🔄 Attempting fallback registration...');
+        try {
+            await rest.put(Routes.applicationCommands(client.user.id), { body: commands });
+            console.log('✅ Fallback registration successful');
+        } catch (fallbackError) {
+            console.error('❌ Fallback failed:', fallbackError);
+        }
     }
 });
 
