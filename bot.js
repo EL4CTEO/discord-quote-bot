@@ -262,6 +262,7 @@ client.once('ready', async () => {
         console.error('Error registering commands:', error);
     }
 });
+
 client.on('interactionCreate', async interaction => {
     if (interaction.isChatInputCommand()) {
         try {
@@ -311,6 +312,7 @@ client.on('interactionCreate', async interaction => {
                         await interaction.reply(`❌ No quotes found containing: "${keyword}"`);
                     }
                     break;
+
                 case 'quotestats':
                     const topAuthors = Array.from(quotesByAuthor.entries())
                         .sort((a, b) => b[1].length - a[1].length)
@@ -368,6 +370,7 @@ client.on('interactionCreate', async interaction => {
                         embeds: [createQuoteEmbed(wisdom, '🧠 Wisdom Quote')] 
                     });
                     break;
+
                 case 'quotelength':
                     const lengthType = interaction.options.getString('length');
                     const lengthQuote = getQuotesByLength(lengthType);
@@ -388,6 +391,7 @@ client.on('interactionCreate', async interaction => {
             const focusedValue = interaction.options.getFocused();
             const authors = Array.from(quotesByAuthor.keys())
                 .filter(author => author.toLowerCase().includes(focusedValue.toLowerCase()))
+                .sort()
                 .slice(0, 25);
             
             await interaction.respond(
