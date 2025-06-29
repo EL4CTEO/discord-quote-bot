@@ -8,31 +8,6 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 const INSTANCE_ID = `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
 
-app.get('/', (req, res) => {
-    res.json({ 
-        status: 'Bot is running!', 
-        instance: INSTANCE_ID,
-        uptime: process.uptime(),
-        timestamp: new Date().toISOString(),
-        environment: process.env.NODE_ENV || 'development'
-    });
-});
-
-app.get('/health', (req, res) => {
-    res.json({ 
-        status: 'healthy',
-        instance: INSTANCE_ID,
-        bot: client.isReady() ? 'connected' : 'disconnected',
-        guilds: client.guilds.cache.size,
-        users: client.users.cache.size,
-        commands: commands.length
-    });
-});
-
-app.listen(PORT, () => {
-    console.log(`🌐 HTTP server running on port ${PORT}`);
-});
-
 const client = new Client({
     intents: [
         GatewayIntentBits.Guilds,
@@ -108,6 +83,31 @@ const commands = [
         )
 ];
 
+app.get('/', (req, res) => {
+    res.json({ 
+        status: 'Bot is running!', 
+        instance: INSTANCE_ID,
+        uptime: process.uptime(),
+        timestamp: new Date().toISOString(),
+        environment: process.env.NODE_ENV || 'development'
+    });
+});
+
+app.get('/health', (req, res) => {
+    res.json({ 
+        status: 'healthy',
+        instance: INSTANCE_ID,
+        bot: client.isReady() ? 'connected' : 'disconnected',
+        guilds: client.guilds.cache.size,
+        users: client.users.cache.size,
+        commands: commands.length
+    });
+});
+
+app.listen(PORT, () => {
+    console.log(`🌐 HTTP server running on port ${PORT}`);
+});
+
 function loadQuotes() {
     try {
         const quotesPath = path.join(__dirname, 'quotes.txt');
@@ -154,6 +154,7 @@ function loadQuotes() {
         console.error('Error loading quotes:', error);
     }
 }
+
 function getRandomQuote() {
     if (quotes.length === 0) return null;
     return quotes[Math.floor(Math.random() * quotes.length)];
