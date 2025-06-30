@@ -111,7 +111,7 @@ app.listen(PORT, () => {
 // Keep-alive per evitare che Render metta il bot in sleep
 if (process.env.NODE_ENV === 'production') {
     setInterval(() => {
-        fetch(`https://dashboard.render.com/web/srv-d12dbl95pdvs73cko060/health`)
+        fetch(`https://discord-quote-bot-1.onrender.com`)
             .then(res => console.log(`Keep-alive ping: ${res.status}`))
             .catch(err => console.log('Keep-alive ping failed:', err.message));
     }, 14 * 60 * 1000); // Ogni 14 minuti
