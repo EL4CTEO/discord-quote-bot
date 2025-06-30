@@ -108,6 +108,15 @@ app.listen(PORT, () => {
     console.log(`🌐 HTTP server running on port ${PORT}`);
 });
 
+// Keep-alive per evitare che Render metta il bot in sleep
+if (process.env.NODE_ENV === 'production') {
+    setInterval(() => {
+        fetch(`https://dashboard.render.com/web/srv-d12dbl95pdvs73cko060/health`)
+            .then(res => console.log(`Keep-alive ping: ${res.status}`))
+            .catch(err => console.log('Keep-alive ping failed:', err.message));
+    }, 14 * 60 * 1000); // Ogni 14 minuti
+}
+
 function loadQuotes() {
     try {
         const quotesPath = path.join(__dirname, 'quotes.txt');
