@@ -1,5 +1,6 @@
 const { Client, GatewayIntentBits, SlashCommandBuilder, REST, Routes, EmbedBuilder } = require('discord.js');
 const express = require('express');
+const https = require('https');
 const fs = require('fs');
 const path = require('path');
 require('dotenv').config();
@@ -108,13 +109,14 @@ app.listen(PORT, () => {
     console.log(`🌐 HTTP server running on port ${PORT}`);
 });
 
-// Keep-alive per evitare che Render metta il bot in sleep
 if (process.env.NODE_ENV === 'production') {
     setInterval(() => {
-        fetch(`https://discord-quote-bot-1.onrender.com`)
-            .then(res => console.log(`Keep-alive ping: ${res.status}`))
-            .catch(err => console.log('Keep-alive ping failed:', err.message));
-    }, 14 * 60 * 1000); // Ogni 14 minuti
+        https.get('https://discord-quote-bot-1.onrender.com', (res) => {
+            console.log(`Keep-alive ping: ${res.statusCode}`);
+        }).on('error', (err) => {
+            console.log('Keep-alive ping failed:', err.message);
+        });
+    }, 14 * 60 * 1000);
 }
 
 function loadQuotes() {
