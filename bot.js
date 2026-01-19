@@ -19,6 +19,12 @@ const client = new Client({
 
 let quotes = [];
 let quotesByAuthor = new Map();
+let motivationalKeywords = [];
+let wisdomKeywords = [];
+let motivationalAuthors = [];
+let wisdomAuthors = [];
+
+const STOP_WORDS = new Set(['the', 'be', 'to', 'of', 'and', 'a', 'in', 'that', 'have', 'i', 'it', 'for', 'not', 'on', 'with', 'he', 'as', 'you', 'do', 'at', 'this', 'but', 'his', 'by', 'from', 'they', 'we', 'say', 'her', 'she', 'or', 'an', 'will', 'my', 'one', 'all', 'would', 'there', 'their', 'what', 'so', 'up', 'out', 'if', 'about', 'who', 'get', 'which', 'go', 'me', 'when', 'make', 'can', 'like', 'time', 'no', 'just', 'him', 'know', 'take', 'people', 'into', 'year', 'your', 'good', 'some', 'could', 'them', 'see', 'other', 'than', 'then', 'now', 'look', 'only', 'come', 'its', 'over', 'think', 'also', 'back', 'after', 'use', 'two', 'how', 'our', 'work', 'first', 'well', 'way', 'even', 'new', 'want', 'because', 'any', 'these', 'give', 'day', 'most', 'us', 'is', 'was', 'are', 'been', 'has', 'had', 'were', 'said', 'did', 'having', 'may']);
 
 const commands = [
     new SlashCommandBuilder()
@@ -118,6 +124,67 @@ if (process.env.NODE_ENV === 'production') {
     }, 14 * 60 * 1000);
 }
 
+function analyzeQuoteContent() {
+    const wordFrequency = new Map();
+    const authorWordFrequency = new Map();
+    
+    quotes.forEach(quote => {
+        const words = quote.text.toLowerCase()
+            .replace(/[^\w\s]/g, '')
+            .split(/\s+/)
+            .filter(word => word.length > 3 && !STOP_WORDS.has(word));
+        
+        words.forEach(word => {
+            wordFrequency.set(word, (wordFrequency.get(word) || 0) + 1);
+        });
+        
+        if (!authorWordFrequency.has(quote.author)) {
+            authorWordFrequency.set(quote.author, new Map());
+        }
+        const authorMap = authorWordFrequency.get(quote.author);
+        words.forEach(word => {
+            authorMap.set(word, (authorMap.get(word) || 0) + 1);
+        });
+    });
+    
+    const motivationalWords = ['success', 'achieve', 'dream', 'goal', 'win', 'believe', 'fight', 'courage', 'strength', 'work', 'future', 'great', 'better', 'best', 'power', 'strong', 'never', 'always', 'must', 'change'];
+    const wisdomWords = ['wisdom', 'truth', 'learn', 'knowledge', 'understand', 'life', 'think', 'mind', 'experience', 'teach', 'know', 'reality', 'enlighten', 'consciousness'];
+    
+    motivationalKeywords = Array.from(wordFrequency.keys())
+        .filter(word => motivationalWords.some(mw => word.includes(mw)))
+        .sort((a, b) => wordFrequency.get(b) - wordFrequency.get(a))
+        .slice(0, 30);
+    
+    wisdomKeywords = Array.from(wordFrequency.keys())
+        .filter(word => wisdomWords.some(ww => word.includes(ww)))
+        .sort((a, b) => wordFrequency.get(b) - wordFrequency.get(a))
+        .slice(0, 30);
+    
+    motivationalAuthors = Array.from(authorWordFrequency.entries())
+        .filter(([author, words]) => {
+            const totalMotivational = Array.from(words.keys())
+                .filter(word => motivationalWords.some(mw => word.includes(mw)))
+                .reduce((sum, word) => sum + words.get(word), 0);
+            return totalMotivational >= 3;
+        })
+        .map(([author]) => author.toLowerCase());
+    
+    wisdomAuthors = Array.from(authorWordFrequency.entries())
+        .filter(([author, words]) => {
+            const totalWisdom = Array.from(words.keys())
+                .filter(word => wisdomWords.some(ww => word.includes(ww)))
+                .reduce((sum, word) => sum + words.get(word), 0);
+            return totalWisdom >= 3;
+        })
+        .map(([author]) => author.toLowerCase());
+    
+    console.log(`📊 Analyzed content:`);
+    console.log(`   💪 Motivational keywords: ${motivationalKeywords.length}`);
+    console.log(`   🧠 Wisdom keywords: ${wisdomKeywords.length}`);
+    console.log(`   💪 Motivational authors: ${motivationalAuthors.length}`);
+    console.log(`   🧠 Wisdom authors: ${wisdomAuthors.length}`);
+}
+
 function loadQuotes() {
     try {
         const quotesPath = path.join(__dirname, 'quotes.txt');
@@ -159,6 +226,7 @@ function loadQuotes() {
         }
         
         console.log(`📚 Loaded ${quotes.length} quotes from ${quotesByAuthor.size} authors`);
+        analyzeQuoteContent();
         
     } catch (error) {
         console.error('Error loading quotes:', error);
@@ -232,25 +300,23 @@ function levenshteinDistance(str1, str2) {
 }
 
 function getMotivationalQuote() {
-    const motivationalKeywords = ['success', 'achieve', 'dream', 'goal', 'work', 'future', 'win', 'believe', 'possible', 'great', 'accomplish', 'determination', 'courage', 'strength', 'perseverance', 'effort', 'challenge', 'overcome', 'victory', 'ambition', 'inspire', 'motivate', 'passion', 'dedication'];
-    const motivationalAuthors = ['steve jobs', 'disney', 'roosevelt', 'churchill', 'vince lombardi', 'tony robbins', 'zig ziglar', 'napoleon hill'];
-    
-    const motivationalQuotes = quotes.filter(quote => 
-        motivationalKeywords.some(keyword => quote.text.toLowerCase().includes(keyword)) ||
-        motivationalAuthors.some(author => quote.author.toLowerCase().includes(author))
-    );
+    const motivationalQuotes = quotes.filter(quote => {
+        const textLower = quote.text.toLowerCase();
+        const authorLower = quote.author.toLowerCase();
+        return motivationalKeywords.some(keyword => textLower.includes(keyword)) ||
+               motivationalAuthors.some(author => authorLower.includes(author));
+    });
     
     return { quotes: motivationalQuotes, count: motivationalQuotes.length };
 }
 
 function getWisdomQuote() {
-    const wisdomKeywords = ['wisdom', 'learn', 'knowledge', 'understand', 'truth', 'life', 'experience', 'wise', 'teach', 'thinking', 'mind', 'philosophy', 'enlighten', 'insight', 'reflection', 'thought', 'meditation', 'consciousness'];
-    const wisdomAuthors = ['plato', 'aristotle', 'confucius', 'gandhi', 'einstein', 'buddha', 'socrates', 'lao tzu', 'seneca', 'marcus aurelius'];
-    
-    const wisdomQuotes = quotes.filter(quote => 
-        wisdomKeywords.some(keyword => quote.text.toLowerCase().includes(keyword)) ||
-        wisdomAuthors.some(author => quote.author.toLowerCase().includes(author))
-    );
+    const wisdomQuotes = quotes.filter(quote => {
+        const textLower = quote.text.toLowerCase();
+        const authorLower = quote.author.toLowerCase();
+        return wisdomKeywords.some(keyword => textLower.includes(keyword)) ||
+               wisdomAuthors.some(author => authorLower.includes(author));
+    });
     
     return { quotes: wisdomQuotes, count: wisdomQuotes.length };
 }
