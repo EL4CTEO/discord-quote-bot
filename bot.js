@@ -111,18 +111,18 @@ app.get('/health', (req, res) => {
 });
 
 app.listen(PORT, () => {
-    console.log(`🌐 HTTP server running on port ${PORT}`);
+    console.log(`HTTP server running on port ${PORT}`);
 });
 
-if (process.env.NODE_ENV === 'production') {
-    setInterval(() => {
-        https.get('https://discord-quote-bot-1.onrender.com', (res) => {
-            console.log(`Keep-alive ping: ${res.statusCode}`);
-        }).on('error', (err) => {
-            console.log('Keep-alive ping failed:', err.message);
-        });
-    }, 14 * 60 * 1000);
-}
+const RENDER_URL = process.env.RENDER_EXTERNAL_URL || 'https://discord-quote-bot-1.onrender.com';
+setInterval(() => {
+    https.get(RENDER_URL, (res) => {
+        console.log(`Keep-alive ping: ${res.statusCode}`);
+    }).on('error', (err) => {
+        console.log('Keep-alive ping failed:', err.message);
+    });
+}, 14 * 60 * 1000);
+console.log(`Keep-alive enabled for ${RENDER_URL}`);
 
 function analyzeQuoteContent() {
     const wordFrequency = new Map();
@@ -177,12 +177,6 @@ function analyzeQuoteContent() {
             return totalWisdom >= 3;
         })
         .map(([author]) => author.toLowerCase());
-    
-    console.log(`📊 Analyzed content:`);
-    console.log(`   💪 Motivational keywords: ${motivationalKeywords.length}`);
-    console.log(`   🧠 Wisdom keywords: ${wisdomKeywords.length}`);
-    console.log(`   💪 Motivational authors: ${motivationalAuthors.length}`);
-    console.log(`   🧠 Wisdom authors: ${wisdomAuthors.length}`);
 }
 
 function loadQuotes() {
@@ -225,7 +219,7 @@ function loadQuotes() {
             }
         }
         
-        console.log(`📚 Loaded ${quotes.length} quotes from ${quotesByAuthor.size} authors`);
+        console.log(`Loaded ${quotes.length} quotes from ${quotesByAuthor.size} authors`);
         analyzeQuoteContent();
         
     } catch (error) {
@@ -410,17 +404,14 @@ function createPaginationButtons(page, totalPages, customId) {
 }
 
 client.once('ready', async () => {
-    console.log(`🤖 ${client.user.tag} is online!`);
-    console.log(`🔗 Connected to ${client.guilds.cache.size} guilds with ${client.users.cache.size} users`);
+    console.log(`${client.user.tag} is online!`);
+    console.log(`Connected to ${client.guilds.cache.size} guilds`);
     loadQuotes();
     
     const rest = new REST({ version: '10' }).setToken(process.env.BOT_TOKEN);
     
     try {
-        console.log('🔍 Checking for existing commands...');
-        
         const existingCommands = await rest.get(Routes.applicationCommands(client.user.id));
-        console.log(`Found ${existingCommands.length} existing commands`);
         
         const currentCommandNames = commands.map(cmd => cmd.name).sort();
         const existingCommandNames = existingCommands.map(cmd => cmd.name).sort();
@@ -429,31 +420,19 @@ client.once('ready', async () => {
         const hasDuplicates = existingCommands.length !== new Set(existingCommandNames).size;
         
         if (isDifferent || hasDuplicates) {
-            console.log('🧹 Commands are different or duplicated - clearing and re-registering...');
-            
             await rest.put(Routes.applicationCommands(client.user.id), { body: [] });
-            console.log('✅ Cleared all existing commands');
-            
             await new Promise(resolve => setTimeout(resolve, 1000));
-            
             await rest.put(Routes.applicationCommands(client.user.id), { body: commands });
-            console.log('✨ Registered fresh commands successfully!');
+            console.log('Commands registered.');
         } else {
-            console.log('✅ Commands are already up to date - no action needed');
+            console.log('Commands already up to date.');
         }
-        
-        const finalCommands = await rest.get(Routes.applicationCommands(client.user.id));
-        console.log(`🎯 Final command count: ${finalCommands.length}`);
-        console.log(`📝 Commands: ${finalCommands.map(cmd => cmd.name).join(', ')}`);
-        
     } catch (error) {
-        console.error('❌ Error managing commands:', error);
-        console.log('🔄 Attempting fallback registration...');
+        console.error('Error managing commands:', error);
         try {
             await rest.put(Routes.applicationCommands(client.user.id), { body: commands });
-            console.log('✅ Fallback registration successful');
         } catch (fallbackError) {
-            console.error('❌ Fallback failed:', fallbackError);
+            console.error('Fallback failed:', fallbackError);
         }
     }
 });
@@ -698,11 +677,11 @@ client.on('error', error => {
 });
 
 client.on('disconnect', () => {
-    console.log('🔌 Bot disconnected');
+    console.log('Bot disconnected');
 });
 
 client.on('reconnecting', () => {
-    console.log('🔄 Bot reconnecting...');
+    console.log('Bot reconnecting...');
 });
 
 client.login(process.env.BOT_TOKEN);
